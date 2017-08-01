@@ -23,7 +23,6 @@ Tuples
 ```erlang
 -record('History',  {roster_id= [] :: [] | binary(),
                      contact_id=[] :: list(),
-                     unread_counter = 0 :: integer(),
                      last_loaded_msg_id :: [] | integer() | binary(),
                      data=[] :: list(#'Message'{}),
                      status=[] :: atom() | updated | last_loaded | last_msg}).
@@ -70,9 +69,9 @@ Protocol
                 to `p2p/:from_phone_id/:to_phone_id` counterparty.
              sends `{'Message',Id,_,_,_,_,_,_,FromPhoneId,ToPhoneId,_,Created,_,_,Payload,_,_,sent}`
                 to `actions/1/api/phone/:from_phone` issuer to all `from` sessions.
-             sends `{'History',FromId(?),ToId(?),0,_,[#'Message'{} = LastMsg],last_msg}` where LastMsg - last sent message
+             sends `{'Roster',FromId,_,_,_,[{Contact,FromPhone+Id,_,_,_,_,Unread=0,LastMsg,_,last_msg}],_,_,Phone,_,_,last_msg}` where LastMsg - last sent message
                 to `p2p/:to_phone_id/:from_phone_id` as retain.
-             sends `{'History',ToId(?),FromId(?),Unread+1,_,[#'Message'{} = LastMsg],last_msg}` where LastMsg - last sent message
+             sends `{'Roster',ToId,_,_,_,[{Contact,ToPhone+Id,_,_,_,_,Unread+1,LastMsg,_,last_msg}],_,_,Phone,_,_,last_msg}` where LastMsg - last sent message
                 to `p2p/:from_phone_id/:to_phone_id` as retain.
 
 ```
@@ -82,8 +81,9 @@ Protocol
 1. client sends `{'Message',LastReadId,_,_,_,_,_,_,FromPhoneId,ToPhoneId,_,_,_,_,_,_,_,last_read}` drops unread_counter
              to `events/1//api/anon/:client/:token` once and marks message as read.
 
-2. server sends `{'History',FromId,ToId,0,_,['Message'{} = LastMsg],last_msg}`
+2. server sends `{'Roster',FromId,_,_,_,[{Contact,FromPhone+Id,_,_,_,_,0=Unread,LastMsg,_,last_msg}],_,_,Phone,_,_,last_msg}`
                 to `p2p/:to_phone_id/:from_phone_id` as retain.
+
 ```
 
 ### P2P Edit/Remove Message
@@ -103,19 +103,17 @@ Protocol
 ### Retrieve History
 
 ```
-1. client sends `{'History',Id,Contact,_,LastLoadedMsgId,_,update}`
+1. client sends `{'History',Id,Contact,LastLoadedMsgId,_,update}`
             where LastLoadedMsgId is message from where history has been loaded for the session.
              If LastLoadedMsgId is empty or 0 then the all history must be pulled for the session
              to `events/1//api/anon/:client/:token` once.
 ```
 
 ```
-2. server sends `{'History',Id,Contact,_,NewLastLoadedMsgId,Messages,update}`
+2. server sends `{'History',Id,Contact,NewLastLoadedMsgId,Messages,update}`
         where NewLastLoadedMsgId is the new last retreived message id for the session.
           Messages are exectly from LastLoadedMsgId to NewLastLoadedMsgId
-             to `actions/1/api/phone/:client` once or more.
-          sends `{'History',Id,Contact,_,LastLoadedMsgId,[], last_loaded}` where
-             to `p2p/:to_phone_id/:from_phone_id/:client` as retain.
+             to `actions/1/api/:client` once or more.
 ```
 
 ### Presence Messages

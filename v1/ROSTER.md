@@ -28,7 +28,7 @@ Phone or Profile or Device.
                      phone=[] :: [] | binary(),
                      avatar=[] :: [] | binary(),
                      update=[] :: [] | integer(),
-                     status=[] :: [] | get | update | set | remove | create | del | add | list | atom()}).
+                     status=[] :: [] | get | update | set | remove | create | del | add | list | last_msg | atom()}).
 ```
 
 ```erlang
@@ -38,8 +38,9 @@ Phone or Profile or Device.
                      surnames=[] :: [] | binary(),
                      person_id=[] :: [] | binary(),
                      unread=[] :: [] | integer(),
+                     last_msg=[] :: [] | #'Message'{},
                      update=[] :: [] | integer(),
-                     status=[] :: [] | request | authorization | friend | ban | banned | atom()}).
+                     status=[] :: [] | request | authorization | friend | last_msg | ban | banned | atom()}).
 ```
 
 Overview

@@ -34,7 +34,7 @@ single unique key=token which represent session identifier.
 Client Id
 ---------
 
-* ClientId = `"3800000001_NEXUS1_Android_ua"`
+* ClientId = `"emqttd_3800000001_NEXUS1_Android_ua"`
 
 ClientId resembles all tuple fields to represent a unique
 row indexed naturally by token. ClientId is an unique MQTT
