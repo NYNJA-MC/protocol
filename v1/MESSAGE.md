@@ -19,7 +19,7 @@ Tuples
 ```
 
 ```erlang
--record(room,       {name = [] :: [] | binary() }).
+-record(muc,       {name = [] :: [] | binary() }).
 -record(group,      {name = [] :: [] | binary() }).
 -record(p2p,        {from = [] :: [] | binary(),
                      to   = [] :: [] | binary() }).
@@ -38,7 +38,7 @@ Tuples
 ```erlang
 -record('Message',  {id=[] :: [] | integer(),
                      container = chain | cur,
-                     feed_id=[] :: #p2p{} | #room{}},
+                     feed_id=[] :: #p2p{} | #muc{}},
                      prev=[] :: [] | integer(),
                      next=[] :: [] | integer(),
                      msg_id = [] :: [] | binary(),
@@ -87,7 +87,7 @@ Examples:
 
 * From — `380676631870_1`
 * To — `380676631870_1` or `lobby`
-* Feed — `{p2p,_,_}` or `{room,_}`
+* Feed — `{p2p,_,_}` or `{muc,_}`
 
 ```
 2. server sends `{'Message',Id,_,_,_,_,_,To,From,Files,Time,Type,_,sent}`
