@@ -1,13 +1,13 @@
 AUTH: User Registration
 =======================
 
-Version 2.0 Maxim Sokhatsky, Liubov Mykhailova
+Version 2.0 Maxim Sokhatsky, Liubov Mykhailova, Yuri Maslovsky
 
 Endpoints
 --------
 
 * `actions/1/api/:client` — MQTT
-* `events/1//api/anon/:client/:token` — MQTT
+* `events/1//api/anon//` — MQTT
 
 Tuples
 ------
@@ -15,21 +15,19 @@ Tuples
 Auth tuple represents token storage instances.
 
 ```erlang
--record('Auth', {token=[] :: [] | binary(),
-                 dev_key=[] :: [] | binary(),
-                 user_id=[] :: [] | binary(),
-                 phone=[] :: [] | binary(),
-                 client_id=[] :: [] | binary(),
-                 type=[] :: reg | resend | voice
-                                | verify | logout,
-                 sms_code=[] :: [] | binary(),
-                 attempts=[] :: [] | integer(),
-                 services=[] :: list(atom()),
-                 push=[] :: [] | binary(),
-                 comments=[] :: [] | binary(),
-                 os=[] :: [] | ios | android | web,
-                 created = [] :: [] | integer() | binary(),
-                 last_online = [] :: [] | integer() | binary()}).
+-record('Auth',     {client_id =[] :: [] | binary(),
+                     dev_key   =[] :: [] | binary(),
+                     user_id   =[] :: [] | binary(),
+                     phone     =[] :: [] | binary(),
+                     token     =[] :: [] | binary(),
+                     type      =[] :: [] | atom(),
+                     sms_code  =[] :: [] | binary(),
+                     attempts  =[] :: [] | integer(),
+                     services  =[] :: list(atom()),
+                     push      =[] :: [] | binary(),
+                     os        =[] :: [] | atom() | ios | android | web,
+                     created   =[] :: [] | integer() | binary(),
+                     last_online=[]:: [] | integer() }).
 ```
 
 AUTH model represents distinct non-duplicating 10-tuples with
@@ -38,12 +36,18 @@ single unique key=token which represent session identifier.
 Client Id
 ---------
 
-`<<"emqttd_",Symbols/binary>>`
+`<<"emqttd_",Symbols/binary>>` or `<<"reg_",Symbols/binary>>` if registration
 
 ClientId resembles all tuple fields to represent a unique
 device identifier connected with an given token.
-ClientId is an unique MQTT session identifier that
-respawned with clear_session to `false`.
+ClientId is an unique MQTT session identifier.
+ClientId must be `<<"emqttd_reg_",Symbols/binary>>` and respawned with
+clean_session to `true` if registration process starts. After
+verify the client gets the new ClientId without `_reg_` suffix
+(`<<"emqttd_",Symbols/binary>>`), Token and must disconnect and connect
+with the new ClientId and clean_session to `false`. The mqtt client
+password is the received Token. If connect is ok then the user is login.
+
 
 ```
 TOKEN PHONE      DEVKEY CLIENTID OS      SERVICES
@@ -69,19 +73,20 @@ and issue a SMS or JWT authentication mechanism. To verify device user then shou
 `Auth/voice` for IVR verification or `Auth/verify` for SMS verification.
 
 ```
-1. client sends `{'Auth',[],[],[],Phone,[],reg,[],[],[],[],[]}`
-             or `{'Auth',[],[],[],Phone,[],reg,[],[],[jwt],[],[]}`
-             to `events/1//api/anon/:client/:token` once.
+1. client sends `{'Auth',<<"reg_", _/binary>> =ClientId,[],[],Phone,[],reg,[],[],Services,[],[],[],[]}`
+             to `events/1//api/anon//` once.
 ```
 
 ```
-2. server sends `{io, Result, {'Auth', Token}}`
+2. server sends `{io, Result, <<>>}`
+             or `{io, {ok2, jwt_sent, JwtCode}, <<>>}`
              to `actions/1/api/:client` once.
 ```
 
 Result:
 
-* `{ok,sms_sent}` — the genrated SMS code is sent successfully.
+* `Services` - `[]` or `[jwt]`.
+* `{ok,sms_sent}` or `{ok2, jwt_sent, JwtCode}` — the genrated SMS code or JWT code is sent successfully.
 
 ### `Auth/voice` — Voice Call
 
@@ -89,8 +94,8 @@ The are several channels of verification.
 `Auth/voice` API is dedicated for IVR confirmation.
 
 ```
-1. client sends `{'Auth',Token,[],[],[],[],voice,[],[],[Lang],[],[]}`
-             to `events/1//api/anon/:client/:token` once.
+1. client sends `{'Auth',ClientId,[],[],[],[],voice,[],[],[Lang],[],[],[],[]}`
+             to `events/1//api/anon//` once.
 ```
 
 Lang:
@@ -112,38 +117,41 @@ Result:
 In case of error client might want to send resend SMS for alredy registered token.
 
 ```
-1. client sends `{'Auth',Token,[],[],[],[],resend,[],[],[],[],[]}`
-             to `events/1//api/anon/:client/:token` once.
+1. client sends `{'Auth',<<"reg_", _/binary>> =ClientId,[],[],[],[],resend,[],[],[],[],[],[],[]}`
+             to `events/1//api/anon//` once.
 ```
 
 ```
-2. server sends `{io, Result, {'Auth', Token}}`
+2. server sends `{io, Result, <<>>}`
              to `actions/1/api/:client` once.
 ```
 
 Result:
 
 * `{ok,sms_sent}` — the genrated SMS code is sent successfully.
-* `{error,session_not_found}` — Auth record absent
+* `{error,session_not_found}` — Auth record absent.
+* `{error,mismatch_user_data}` — Auth record found but wrong.
 
 ### `Auth/verify` — Verify
 
 Verify that SMS you've entered and the one we sent you are same.
 
 ```
-1. client sends `{'Auth',Token,[],[],[],[],verify,SMS,[],[],[],[]}`
-             or `{'Auth',Token,[],[],[],[],verify,SMS,[],[jwt],[],[]}`
-             to `events/1//api/anon/:client/:token` once.
+1. client sends `{'Auth',<<"reg_", _/binary>> =ClientId,[],[],[],[],verify,SMS,[],Service,[],[],[],[]}`
+             to `events/1//api/anon//` once.
 ```
 
 ```
-2. server sends `{io, Result, {'Auth', Token}}`
+2. server sends `{io, Result, <<>>}`
+             to `actions/1/api/:client` once and
+   server sends `{'Profile', Phone, Services, Rosters,_,_,_,_,_}`
              to `actions/1/api/:client` once.
+
 ```
 
 Result:
 
-* `{ok,login}` — Logged in
+* `{ok2,login, {'Client', ClientId}}` — Logged in
 * `{error,session_not_found}` — Auth record absent
 * `{error,mismatch_user_data}` — Record is found but wrong
 * `{error,invalid_sms_code}` — Wrong SMS
@@ -153,30 +161,25 @@ Result:
 ### `Auth/login` — Login
 
 Proceed Authentication with a given credentials.
-
+Client sends Token as MQTT password,
+`ClientId = <<"emqttd_", _/binary>>`
 ```
-1. client sends `{'Auth',Token,DevKey,ClientId,Phone,[],login,[],[],[],[],[]}`
-             to `events/1//api/anon/:client/:token` once.
-```
-
-```
-2. server sends `{io, Result, {'Auth', Token}}`
+1. server sends `{io, Result, <<>>}`
              to `actions/1/api/:client` once.
+             or nothing if token is not expired
 ```
 
 Result:
 
-* `{ok,login}` — Logged in
-* `{error,session_not_found}` — Auth record is not found
-* `{error,mismatch_user_data}` — Record is found but wrong
+* `{ok2,login, {ClientId, Token}}` — Logged in if token has been expired
 
 ### `Auth/logout` — Logout
 
 Logging out means your device token removal. You'll need to be reregistered on this device.
 
 ```
-1. client sends `{'Auth',[],[],[],[],[],logout,[],[],[],[],[]}`
-             to `events/1//api/anon/:client/:token` once.
+1. client sends `{'Auth',[],[],[],[],[],logout,[],[],[],[],[],[],[]}`
+             to `events/1//api/anon//` once.
 ```
 
 ```
@@ -196,7 +199,7 @@ Result:
 ```
 
 * OS — android, ios, web
-* Push — OS specific Push token 
+* Push — OS specific Push token
 
 ```
 2. server sends `{io, Result, <<>>}`
@@ -228,7 +231,7 @@ Result:
 ```
 
 ```
-2. server sends `{io, {error,invalid_data}, {'Auth', Token}}`
+2. server sends `{io, {error,invalid_data}, <<>>}`
              to `actions/1/api/:client` once.
 ```
 
