@@ -132,16 +132,16 @@ Examples:
 ### `History/get` — Retrieve History
 
 ```
-1. client sends `{'History',Id,Feed,Size,EntityId,_,get}`
+1. client sends `{'History',PhoneId,Feed,Size,EntityId,_,get}`
              to `events/1//api//` once.
 ```
 
-* Feed — `#p2p{}` or '#muc{}' key of the conversation
+* Feed     — `#p2p{}` or `#muc{}` key of the conversation
 * EntityId — id of the message(or other entity) beginning from which you want to get list of next or prev messages.
 
 ```
 2. server sends `{'History',PhoneId,Feed,NewPos,EntityId,Data,get}`	     
-    	     or `{io,{error,invalid_data},<<>>}`	    
+             or `{io,{error,invalid_data},<<>>}`	    
              to `actions/1/api/:client` once or more.
 ```
 
@@ -151,7 +151,7 @@ Sets marker to feed for counterparty.
 
 ```
 1. client sends `{'History',PhoneId,Feed,_,Position,[],update}`
-	     to `events/1//api//` once.
+             to `events/1//api//` once.
 ```
 
 
@@ -160,8 +160,8 @@ Sets marker to feed for counterparty.
 ```
 
 2. server sends `{Contact,PhoneId,_,_,_,_,_,_,_,_,Unread,_,_,_,_,last_msg}` 
-	     or `{Room,Name,_,_,_,_,_,_,_,_,_,Unread,_,_,_,last_msg}` 
-	     to `ses/:phone` once 
-    	     or `{io,{error,invalid_data},<<>>}`
+             or `{Room,Name,_,_,_,_,_,_,_,_,_,Unread,_,_,_,last_msg}` 
+             to `ses/:phone` once 
+             or `{io,{error,invalid_data},<<>>}`
              to `actions/1/api/:client` once.
 ```

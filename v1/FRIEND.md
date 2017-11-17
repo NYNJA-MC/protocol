@@ -16,10 +16,10 @@ Tuples
 ```erlang
 -record('Friend', {phone_id = [] :: [] | binary(),
                   friend_id = [] :: [] | binary(),
-		  status    =[] :: [] | contact | simple
-                                         | list | common_groups | ban | unban
-                                         | mute | unmute
-                                         | request | confirm | revoke }).
+		          status    = [] :: [] | contact | simple
+                                       | list | common_groups | ban | unban
+                                       | mute | unmute
+                                       | request | confirm | revoke }).
 ```
 
 Overview
@@ -60,7 +60,7 @@ conversation MQTT topic are being created for both counterparties.
 
 ```
 2. server sends `{io,{ok,added},{ok,added}}`
-	     or `{io,{ok,added},{error,contact_not_found}}`
+             or `{io,{ok,added},{error,contact_not_found}}`
              or `{io,{error,contact_not_found},{ok,added}}`
              or `{io,{error,contacts_not_found},{error,contacts_not_found}}`
              to `actions/1/api/:client` once.
@@ -96,7 +96,15 @@ conversation MQTT topic are being removed for both counterparties.
 ```
 
 ```
-2. server sends `{'Contact',_,_,_,_,_,_,_,_,_,_,_,_,_,banned}`
+2. server sends `{io,{ok,added},{ok,added}}`
+	         or `{io,{ok,added},{error,contact_not_found}}`
+             or `{io,{error,contact_not_found},{ok,added}}`
+             or `{io,{error,contacts_not_found},{error,contacts_not_found}}`
+             to `actions/1/api/:client` once.
+```
+
+```
+3. server sends `{'Contact',_,_,_,_,_,_,_,_,_,_,_,_,_,banned}`
              to `ses/:party` once.
             and `ses/:counterparty` once.
 ```

@@ -7,8 +7,10 @@ Endpoints
 --------
 
 * `actions/1/api/:client` — MQTT
-* `events/1//api/anon//` — MQTT
-* `p2p/:phone_id` - MQTT
+* `events/1//api/anon//`  — MQTT
+* `ses/:phone`            — MQTT
+* `ac/:phone_id`          — MQTT
+* `muc/:phone_id`         — MQTT
 
 Tuples
 ------
@@ -18,34 +20,39 @@ Contact Book or Contact List of the User. Each account connected to single
 Phone or Profile or Device.
 
 ```erlang
--record('Roster',   {id=[] :: [] | integer(),
-                     names=[] :: [] | binary(),
+-record('Roster',   {id      =[] :: [] | integer(),
+                     names   =[] :: [] | binary(),
                      surnames=[] :: [] | binary(),
-                     email=[] :: [] | binary(),
-                     nick= [] :: [] | binary(),
+                     email   =[] :: [] | binary(),
+                     nick    =[] :: [] | binary(),
                      userlist=[] :: list(#'Contact'{}),
                      roomlist=[] :: list(#'Room'{}),
                      favorite=[] :: list(#'Star'{}),
-                     tags=[]     :: list(#'Tag'{}),
-                     phone=[] :: [] | binary(),
-                     avatar=[] :: [] | binary(),
-                     update=0 :: [] | integer(),
-                     status=[] :: [] | get | set | create | del | remove
-                       | add | update | list | patch | last_msg | atom()}).
+                     tags    =[] :: list(#'Tag'{}),
+                     phone   =[] :: [] | binary(),
+                     avatar  =[] :: [] | binary(),
+                     update  =0  :: [] | integer(),
+                     status  =[] :: [] | get | set | create | del | remove
+                                       | add | update | list | patch | last_msg | atom()}).
 ```
 
 ```erlang
--record('Contact',  {phone_id=[] :: [] | binary(),
-                     avatar=[] :: [] | binary(),
-                     names=[] :: [] | binary(),
-                     surnames=[] :: [] | binary(),
-                     person_id=[] :: [] | binary(),
-                     unread=[] :: [] | integer(),
-                     last_msg=[] :: [] | #'Message'{},
-                     update=[] :: [] | integer(),
-                     presence=[] :: [] | online | offline | atom(),
-                     status=[] :: [] | request | authorization | friend
-                                      | last_msg | muted | banned | atom()}).
+-record('Contact',  {phone_id  =[] :: [] | binary(),
+                     avatar    =[] :: [] | binary(),
+                     names     =[] :: [] | binary(),
+                     surnames  =[] :: [] | binary(),
+                     nick      =[] :: [] | binary(),
+                     email     =[] :: [] | binary(),
+                     vox_id    =[] :: [] | binary(),
+                     reader    = 0 :: [] | integer(),
+                     unread    = 0 :: [] | integer(),
+                     last_msg  =[] :: [] | #'Message'{},
+                     update    = 0 :: [] | integer(),
+                     settings  =[] :: [] | list(#'Feature'{}),
+                     presence  =[] :: [] | atom(),
+                     status    =[] :: [] | request | authorization | internal
+                                         | friend | last_msg | ban | banned | deleted }).
+
 ```
 
 * person_id — VoxImplant User Id
@@ -61,28 +68,13 @@ Protocol
 ### `Roster/get` — Get Roster
 
 ```
-1. client sends `{'Roster,Id,_,_,_,_,_,_,_,_,_,_,_,_,_,get}`
+1. client sends `{'Roster,Id,_,_,_,_,_,_,_,_,_,_,_,get}`
              to `events/1//api/anon//` once.
 ```
 
 ```
-2. server sends `{'Roster,Id,_,_,_,_,_,_,_,_,_,_,_,_,_,_}`
-             or `{io,{error,roster_not_found},<<>>}`
-             or `{io,{error,not_authorized},<<>>}`
-             to `actions/1/api/:client` once.
-```
-
-### `Roster/update` — Update Roster
-
-```
-1. client sends `{'Roster,Id,Names,Surnames,Email,Nick,[],[],Stars,Tags,Phone,Avatar,Time,update}`
-             to `events/1//api/anon//` once.
-```
-
-```
-2. server sends `{'Roster,Id,Names,Surnames,Email,Nick,[],[],Stars,Tags,Phone,Avatar,Time,update}`
-             or `{io,{error,roster_not_found},<<>>}`
-             or `{io,{error,not_authorized},<<>>}`
+2. server sends `{'Roster,Id,_,_,_,_,_,_,_,_,_,_,_,_}`
+             or `{io,{error,roster_not_found},<<>>}`            
              to `actions/1/api/:client` once.
 ```
 
@@ -96,13 +88,16 @@ Protocol
 ```
 
 2. server sends `{'Roster,Id,_,_,_,_,_,_,_,_,_,_,_,_}`
-             or `{io,{error,not_authorized},<<>>}`
+             to `ses/:phone` once
+             or `{io,{error,not_found},<<>>}`
              to `actions/1/api/:client` once.
 ```
 
 ```
-3. server sends `{Contact,Id,_,_,_,_,_,_,Time,_}`
-             to `p2p/:phone_id` once.
+3. server sends `{Contact,PhoneId,_,_,_,_,_,_,_,_,_,Time,_,_,_}`
+             to `ac/:phone_id` once
+             to `muc/:phone_id` once.
+
 ```
 
 ### `Roster/nick` — Update Nick
@@ -115,16 +110,17 @@ Protocol
 ```
 
 2. server sends `{'Roster,Id,_,_,_,_,_,_,_,_,_,_,_,_}`
-             or `{io,{error,not_authorized},<<>>}`
-             or `{io,{error,nick},<<>>}`               - nick is already in use by another user
-             or `{io,{error,invalid_nick},<<>>}`       - wrong nick format
+             to `ses/:phone` once
+             or `{io,{error,not_found},<<>>}`
+             or `{io,{error,nick},<<>>}`            - nick is already in use by another user
+             or `{io,{error,invalid_nick},<<>>}`    - wrong nick format
              to `actions/1/api/:client` once.
 
 ```
 
 ```
-3. server sends `{Contact,Id,_,_,_,_,_,_,Time,_}`
-             to `p2p/:phone_id` once.
+3. server sends `{Contact,PhoneId,_,_,_,_,_,_,_,_,Time,_,_,_}`
+             to `ac/:phone_id` once.
 ```
 
 ### `Roster/remove` — Remove Roster
@@ -135,16 +131,16 @@ Protocol
 ```
 
 ```
-2. server sends `{io,{error,not_authorized},<<>>}`
-             or `{io,{error,profile_not_found},<<>>}`
+2. server sends `{io,{error,profile_not_found},<<>>}`
              or `{io,{error,roster_not_found},<<>>}`
              or `{io,{ok,removed},<<>>}`
              to `actions/1/api/:client` once.
 ```
 
 ```
-3. server sends `{Contact,Id,_,_,_,_,_,Time,remove}`
-                to `p2p/:phone_id` once.
+3. server sends `{Contact,PhoneId,_,_,_,_,_,_,_,_,Time,_,_,remove}`
+             to `ac/:phone_id` once
+             to `muc/:phone_id` once.  .
 ```
 
 ### `Roster/create` — Create Roster
@@ -156,7 +152,6 @@ Protocol
 
 ```
 2. server sends `{'Roster,Id,_,_,_,_,_,_,_,_,_,_,_,_}`
-             or `{io,{error,not_authorized},<<>>}`
              to `actions/1/api/:client` once.
 ```
 
@@ -169,7 +164,7 @@ Protocol
 
 ```
 2. server sends `{io,List,<<>>}`
-             or `{io,{error,not_authorized},<<>>}`
+             or `{io,{error,profile_not_found},<<>>}`
              to `actions/1/api/:client` once.
 ```
 
@@ -182,7 +177,6 @@ Protocol
 
 ```
 2. server sends `{io,{error,roster_not_found},<<>>}`
-             or `{io,{error,not_authorized},<<>>}`
              or `{io,{ok,added},<<>>}`
              or `{io,{ok2, already_present,_},<<>>}`
              to `actions/1/api/:client` once.
@@ -197,7 +191,6 @@ Protocol
 
 ```
 2. server sends `{io,{error,roster_not_found},<<>>}`
-             or `{io,{error,not_authorized},<<>>}`
              or `{io,{error,contacts_not_found},<<>>}`
              or `{io,{ok2,removed,List},<<>>}`
              to `actions/1/api/:client` once.
